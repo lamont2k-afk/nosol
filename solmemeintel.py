@@ -13,7 +13,7 @@ def mock_gmgn_launches():
         {"symbol": "PEPE2", "age_min": 60, "mcap": 185000, "liquidity": 45000,
          "dev_pct": 4, "snipers": 3, "top10_pct": 22, "risk_flags": []},
         {"symbol": "AIAGENT", "age_min": 25, "mcap": 120000, "liquidity": 18000,
-         "dev_pct": 9, "snipers": 6, "top10_pct": 38, "risk_flags": },
+         "dev_pct": 9, "snipers": 6, "top10_pct": 38, "risk_flags": ["liquidity_under_30k"]},
         {"symbol": "WIF2", "age_min": 15, "mcap": 80000, "liquidity": 8500,
          "dev_pct": 22, "snipers": 11, "top10_pct": 61, "risk_flags": ["top10_over_50pct", "dev_over_20pct", "liquidity_under_10k"]},
     ]
@@ -33,11 +33,11 @@ def mock_birdeye(symbol):
 # ---------- RISK ENGINE ----------
 def risk_flags(token):
     flags = list(token.get("risk_flags", []))
-    if token > 50: flags.append("top10_over_50pct")
-    if token > 20: flags.append("dev_over_20pct")
-    if token < 10000: flags.append("liquidity_under_10k")
+    if token["top10_pct"] > 50: flags.append("top10_over_50pct")
+    if token["dev_pct"] > 20: flags.append("dev_over_20pct")
+    if token["liquidity"] < 10000: flags.append("liquidity_under_10k")
     if token["liquidity"] < 30000: flags.append("liquidity_under_30k")
-    if token > 10: flags.append("high_sniper_count")
+    if token["snipers"] > 10: flags.append("high_sniper_count")
     return list(set(flags))
 
 def is_confirmed_scam(flags):
@@ -46,9 +46,9 @@ def is_confirmed_scam(flags):
 # ---------- SCORING ----------
 def score_token(token, flags):
     s = 50
-    s += max(0, 30 - token / 2)          # freshness
-    s += min(20, token / 5000)          # liquidity quality
-    s -= token # dev holding penalty
+    s += max(0, 30 - token["age_min"] / 2)          # freshness
+    s += min(20, token["liquidity"] / 5000)          # liquidity quality
+    s -= token["dev_pct"]                            # dev holding penalty
     s -= token["top10_pct"] / 2                      # concentration penalty
     s -= len(flags) * 5                              # risk penalty
     return max(0, min(100, round(s)))
@@ -65,11 +65,11 @@ def main():
             flags = risk_flags(t)
             sc = score_token(t, flags)
             status = "NO TRADE" if is_confirmed_scam(flags) else f"SCORE {sc}/100"
-            print(f"  {t :8s} mcap=${t :>7,} liq=${t['liquidity']:>6,} "
-                  f"dev={t }% top10={t }% flags={flags or '-'} -> {status}")
+            print(f"  {t['symbol']:8s} mcap=${t['mcap']:>7,} liq=${t['liquidity']:>6,} "
+                  f"dev={t['dev_pct']}% top10={t['top10_pct']}% flags={flags or '-'} -> {status}")
         for n in narratives:
-            if n in ("accelerating", "emerging") and n >= 5:
-                print(f"  {n .upper()} - {n['theme']} ({n } mentions, {n } KOLs)")
+            if n["momentum"] in ("accelerating", "emerging") and n["kol_mentions"] >= 5:
+                print(f"  {n['momentum'].upper()} - {n['theme']} ({n['mentions']} mentions, {n['kol_mentions']} KOLs)")
         print()
         if scan < 1:
             time.sleep(SCAN_INTERVAL_SEC)
