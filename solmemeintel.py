@@ -57,10 +57,10 @@ def score_token(token, flags):
 def main():
     print("SolMemeIntel starting (demo mode)")
     print(f"Scanning every {SCAN_INTERVAL_SEC}s. Ctrl+C to stop.")
-    for scan in range(2):
+    while True:
         launches = mock_gmgn_launches()
         narratives = mock_x_narratives()
-        print(f"--- SCAN {scan+1} ---")
+        print(f"--- SCAN {datetime.now():%H:%M:%S} ---")
         for t in launches:
             flags = risk_flags(t)
             sc = score_token(t, flags)
@@ -71,8 +71,7 @@ def main():
             if n["momentum"] in ("accelerating", "emerging") and n["kol_mentions"] >= 5:
                 print(f"  {n['momentum'].upper()} - {n['theme']} ({n['mentions']} mentions, {n['kol_mentions']} KOLs)")
         print()
-        if scan < 1:
-            time.sleep(SCAN_INTERVAL_SEC)
+        time.sleep(SCAN_INTERVAL_SEC)
 
 if __name__ == "__main__":
     try:
