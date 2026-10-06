@@ -41,4 +41,34 @@ def is_confirmed_scam(flags):
 def score_token(token, flags):
     s = 50
     s += max(0, 30 - token / 2)          # freshness
-    s +=
+    s += min(20, token / 5000)          # liquidity quality
+    s -= token # dev holding penalty
+    s -= token / 2                      # concentration penalty
+    s -= len(flags) * 5                              # risk penalty
+    return max(0, min(100, round(s)))
+
+# ---------- MAIN LOOP ----------
+def main():
+    print(f" SolMemeIntel starting (demo mode)")
+    print(f"Scanning every {SCAN_INTERVAL_SEC}s. Ctrl+C to stop.\n")
+    while True:
+        launches = mock_gmgn_launches()
+        narratives = mock_x_narratives()
+        print(f"--- SCAN {datetime.now():%H:%M:%S} ---")
+        for t in launches:
+            flags = risk_flags(t)
+            sc = score_token(t, flags)
+            status = "NO TRADE" if is_confirmed_scam(flags) else f"SCORE {sc}/100"
+            print(f"  {t :8s} mcap=${t :>7,} liq=${t['liquidity']:>6,} "
+                  f"dev={t }% top10={t }% flags={flags or } -> {status}")
+        for n in narratives:
+            if n in ("accelerating", "emerging") and n >= 5:
+                print(f" {n } - {n } ({n } mentions, {n } KOLs)")
+        print()
+        time.sleep(SCAN_INTERVAL_SEC)
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\nStopped. Bot never touched a wallet - demo mode only.")
